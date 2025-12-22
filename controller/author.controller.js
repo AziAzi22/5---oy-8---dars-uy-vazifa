@@ -5,7 +5,10 @@ const BookSchema = require("../schema/book.schema");
 
 const getAllAuthor = async (req, res) => {
   try {
-    const authors = await AuthorSchema.find();
+    const authors = await AuthorSchema.find().populate({
+      path: "books",
+      select: "-_id -author_id title genre",
+    });
     res.status(200).json(authors);
   } catch (error) {
     console.log(error.message);
@@ -72,15 +75,16 @@ const addAuthor = async (req, res) => {
 const getOneAuthor = async (req, res) => {
   try {
     const { id } = req.params;
-    const author = await AuthorSchema.findById(id);
+    const author = await AuthorSchema.findById(id).populate(
+      "books",
+      "-_id -author_id title genre"
+    );
 
     if (!author) {
       return res.status(404).json({
         message: "Author not found",
       });
     }
-
-    const books = await BookSchema.find({ author_id: id });
 
     // const authorObj = author.toObject();
     // authorObj.books = books;
@@ -90,10 +94,7 @@ const getOneAuthor = async (req, res) => {
     //   title: book.title,
     // }));
 
-    res.status(200).json({
-      author,
-      books,
-    });
+    res.status(200).json(author);
   } catch (error) {
     console.log(error.message);
   }

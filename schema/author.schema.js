@@ -1,6 +1,6 @@
 const { Schema, model, set } = require("mongoose");
 
-const Author = new Schema(
+const AuthorSchema = new Schema(
   {
     full_name: {
       type: String,
@@ -111,14 +111,29 @@ const Author = new Schema(
   {
     timestamps: true,
     versionKey: false,
+    toJSON: {
+      virtuals: true,
+      transform: (_, ret) => {
+        delete ret.id;
+      },
+    },
+    toObject: {
+      virtuals: true,
+      transform: (_, ret) => {
+        delete ret.id;
+      },
+    },
   }
 );
 
-const AuthorSchema = model("Author", Author);
+AuthorSchema.virtual("books", {
+  ref: "Book", // model name
+  localField: "_id", // Author._id
+  foreignField: "author_id", // Book.author_id
+});
 
 // Author.static.findByFullName = function (name) {
 //   return this.find({ full_name: name });
 // };
 
-
-module.exports = AuthorSchema;
+module.exports = model("Author", AuthorSchema);
