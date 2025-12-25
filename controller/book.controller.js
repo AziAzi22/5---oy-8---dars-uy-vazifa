@@ -1,3 +1,4 @@
+const authorSchema = require("../schema/author.schema");
 const BookSchema = require("../schema/book.schema");
 const CustomErrorHandler = require("../utils/custom-error-handler");
 
@@ -33,6 +34,11 @@ const addBook = async (req, res, next) => {
       publishers_phone_number,
       author_id,
     } = req.body;
+
+    const author = await authorSchema.findById(author_id);
+    if (!author) {
+      throw CustomErrorHandler.BadRequest("Author not found");
+    }
 
     await BookSchema.create({
       title,
