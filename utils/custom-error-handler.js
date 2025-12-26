@@ -20,4 +20,8 @@ module.exports = class CustomErrorHandler extends Error {
   static AlreadyExist(message, errors = []) {
     return new CustomErrorHandler(404, message, errors);
   }
+
+  static Forbidden(message, errors = []) {
+    return new CustomErrorHandler(403, message, errors);
+  }
 };

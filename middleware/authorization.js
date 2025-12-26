@@ -1,43 +1,24 @@
 const jwt = require("jsonwebtoken");
+const CustomErrorHandler = require("../utils/custom-error-handler");
 
 const authorization = (req, res, next) => {
   try {
-    const bearerToken = req.headers.authorization;
+    const access_token = req.cookies.access_token;
 
-    if (!bearerToken) {
-      return res.status(401).json({
-        message: "Bearer token not found",
-      });
+    if (!access_token) {
+      throw CustomErrorHandler.UnAuthorized("access token not found");
     }
 
-    const token = bearerToken.split(" ");
-
-    if (token[0] !== "Bearer") {
-      return res.status(401).json({
-        message: "Bearer token is required",
-      });
-    }
-
-    if (!token[1]) {
-      return res.status(401).json({
-        message: "token not found",
-      });
-    }
-
-    const decode = jwt.verify(token[1], process.env.SECRET_KEY);
+    const decode = jwt.verify(access_token, process.env.SECRET_KEY);
     req.user = decode;
 
-    if (decode.role !== "admin" && decode.role !== "superadmin") {
-      return res.status(403).json({
-        message: "you are not a admin",
-      });
+    if (!["admin", "superadmin"].includes(req.user.role)) {
+      throw CustomErrorHandler.Forbidden("you are not admin");
     }
 
     next();
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    next(error);
   }
 };
 

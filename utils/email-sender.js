@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const CustomErrorHandler = require("./custom-error-handler");
 
 const sendMessage = async (email, code) => {
   try {
@@ -8,20 +9,19 @@ const sendMessage = async (email, code) => {
       secure: true,
       auth: {
         user: "aziazi22t@gmail.com",
-        pass: "ubllcarzqskxcpie",
+        pass: process.env.APP_KEY,
       },
     });
 
     return await transporter.sendMail({
       from: "aziazi22t@gmail.com",
       to: email,
-      subject: "Lesson verification code",
+      subject: "Library verification code",
       text: "bu kod tasdiqlash uchun",
-      html: `<b>${code}</b>`,
+      html: `<h1><b>${code}</b></h1><br><h3><b>you have 5 minutes to verify</b></h3>`,
     });
   } catch (error) {
-    console.log("Email send error:", error.message);
-    throw error;
+    throw CustomErrorHandler.BadRequest(error.message);
   }
 };
 

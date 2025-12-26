@@ -1,14 +1,14 @@
 const sendMessage = require("../utils/email-sender.js");
 const bcrypt = require("bcryptjs");
-const tokenGenerotor = require("../utils/token-generator");
 const AuthSchema = require("../schema/auth.schema");
 const CustomErrorHandler = require("../utils/custom-error-handler.js");
+const { accessToken, refreshToken } = require("../utils/token-generator.js");
 
 // register
 
 const register = async (req, res, next) => {
   try {
-    const { email, password, username, birth_year } = req.body;
+    const { username, email, password, birth_year } = req.body;
 
     const exists = await AuthSchema.findOne({
       $or: [{ email }, { username }],
@@ -20,26 +20,126 @@ const register = async (req, res, next) => {
 
     const hash = await bcrypt.hash(password, 14);
 
-    const generatedCode = +Array.from({ length: 6 }, () =>
+    const generatedCode = Array.from({ length: 6 }, () =>
       Math.floor(Math.random() * 10)
     ).join("");
 
+    const time = Date.now() + 5 * 60 * 1000;
+
     await AuthSchema.create({
+      username,
       email,
       password: hash,
-      username,
       birth_year,
+      otp: generatedCode,
+      otpTime: time,
     });
 
     await sendMessage(email, generatedCode);
 
     res.status(201).json({
-      message: "registred ✌️",
+      message: "you are registred ✌️",
     });
   } catch (error) {
     next(error);
   }
 };
+
+// verify
+
+async function verify(req, res, next) {
+  try {
+    const { email, otp } = req.body;
+    const foundedUser = await AuthSchema.findOne({ email });
+
+    if (!foundedUser) {
+      throw CustomErrorHandler.NotFound("User not found");
+    }
+
+    if (foundedUser.isVerified) {
+      throw CustomErrorHandler.BadRequest("User already verified");
+    }
+
+    const time = Date.now();
+
+    if (time > foundedUser.otpTime) {
+      throw CustomErrorHandler.BadRequest("OTP time expired");
+    }
+
+    if (otp !== foundedUser.otp) {
+      throw CustomErrorHandler.BadRequest("wrong verification code");
+    }
+
+    await AuthSchema.findByIdAndUpdate(foundedUser._id, {
+      isVerified: true,
+      otp: null,
+      otpTime: null,
+    });
+
+    const payload = {
+      username: foundedUser.username,
+      email: foundedUser.email,
+      role: foundedUser.role,
+      id: foundedUser._id,
+    };
+
+    const access_token = accessToken(payload);
+    const refresh_token = refreshToken(payload);
+
+    res.cookie("access_token", access_token, {
+      httpOnly: true,
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie("refresh_token", refresh_token, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 1000,
+    });
+
+    res.status(200).json({
+      message: "Succes",
+      access_token,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/// resend OTP
+
+async function resendOTP(req, res, next) {
+  try {
+    const { email } = req.body;
+
+    const foundedUser = await AuthSchema.findOne({ email });
+
+    if (!foundedUser) {
+      throw CustomErrorHandler.NotFound("you are not registered");
+    }
+
+    if (foundedUser.isVerified) {
+      throw CustomErrorHandler.BadRequest("user already verified");
+    }
+
+    const generatedCode = Array.from({ length: 6 }, () =>
+      Math.floor(Math.random() * 10)
+    ).join("");
+
+    const time = Date.now() + 5 * 60 * 1000;
+
+    foundedUser.otp = generatedCode;
+    foundedUser.otpTime = time;
+    await foundedUser.save();
+
+    await sendMessage(email, generatedCode);
+
+    res.status(200).json({
+      message: "Verification code resent",
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 
 // login
 
@@ -59,17 +159,45 @@ const login = async (req, res, next) => {
       throw CustomErrorHandler.UnAuthorized("Invalid password");
     }
 
+    if (!user.isVerified) {
+      throw CustomErrorHandler.UnAuthorized("you are not verified");
+    }
+
     const payload = {
-      id: user._id,
+      username: user.username,
       email: user.email,
       role: user.role,
+      id: user._id,
     };
 
-    const token = tokenGenerotor(payload);
+    const access_token = accessToken(payload);
+    const refresh_token = refreshToken(payload);
+
+    res.cookie("access_token", access_token, {
+      httpOnly: true,
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie("refresh_token", refresh_token, {
+      httpOnly: true,
+      maxAge: 30 * 24 * 60 * 1000,
+    });
 
     res.status(200).json({
       message: "Succes",
-      token,
+      access_token,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const logout = async (req, res, next) => {
+  try {
+    res.clearCookie("access_token");
+    res.clearCookie("refresh_token");
+    res.status(200).json({
+      message: "you are logged out",
     });
   } catch (error) {
     next(error);
@@ -79,4 +207,7 @@ const login = async (req, res, next) => {
 module.exports = {
   register,
   login,
+  verify,
+  logout,
+  resendOTP,
 };

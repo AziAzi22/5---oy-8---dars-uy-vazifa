@@ -1,13 +1,25 @@
 const jwt = require("jsonwebtoken");
+const CustomErrorHandler = require("./custom-error-handler");
 
-const tokenGenerotor = (payload) => {
+// access token
+const accessToken = (payload) => {
   try {
-    return jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: "1d" });
+    return jwt.sign(payload, process.env.SECRET_KEY, { expiresIn: "15m" });
   } catch (error) {
-    res.status(500).json({
-      message: error.message,
-    });
+    throw CustomErrorHandler.BadRequest(error.message);
   }
 };
 
-module.exports = tokenGenerotor;
+// refresh token
+const refreshToken = (payload) => {
+  try {
+    return jwt.sign(payload, process.env.REFRESH_SECRET_KEY, { expiresIn: "30d" });
+  } catch (error) {
+    throw CustomErrorHandler.BadRequest(error.message);
+  }
+};
+
+module.exports = {
+  accessToken,
+  refreshToken,
+};
