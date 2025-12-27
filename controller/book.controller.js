@@ -1,4 +1,5 @@
 const authorSchema = require("../schema/author.schema");
+const BookQuotesSchema = require("../schema/book-quotes.schema");
 const BookSchema = require("../schema/book.schema");
 const CustomErrorHandler = require("../utils/custom-error-handler");
 
@@ -72,7 +73,19 @@ const getOneBook = async (req, res, next) => {
       throw CustomErrorHandler.NotFound("Book not found");
     }
 
-    res.status(200).json(book);
+    const quotes = await BookQuotesSchema.find({ book_id: id })
+      .select("text -_id")
+      .populate("admin_id", "username -_id");
+
+    const bookQuotes = quotes.map((q) => ({
+      text: q.text,
+      admin: q.admin_id.username,
+    }));
+
+    res.status(200).json({
+      ...book.toObject(),
+      quotes: bookQuotes,
+    });
   } catch (error) {
     next(error);
   }
