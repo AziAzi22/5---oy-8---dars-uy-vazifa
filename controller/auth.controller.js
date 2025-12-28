@@ -114,11 +114,7 @@ async function resendOTP(req, res, next) {
     const foundedUser = await AuthSchema.findOne({ email });
 
     if (!foundedUser) {
-      throw CustomErrorHandler.NotFound("you are not registered");
-    }
-
-    if (foundedUser.isVerified) {
-      throw CustomErrorHandler.BadRequest("user already verified");
+      throw CustomErrorHandler.UnAuthorized("you are not registered");
     }
 
     const generatedCode = Array.from({ length: 6 }, () =>
@@ -134,7 +130,7 @@ async function resendOTP(req, res, next) {
     await sendMessage(email, generatedCode);
 
     res.status(200).json({
-      message: "Verification code resent",
+      message: "verification code resent",
     });
   } catch (error) {
     next(error);
@@ -192,6 +188,50 @@ const login = async (req, res, next) => {
   }
 };
 
+// forget password
+
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email, new_password, otp } = req.body;
+
+    const user = await AuthSchema.findOne({ email });
+
+    if (!user) {
+      throw CustomErrorHandler.UnAuthorized("User not found");
+    }
+
+    if (!user.isVerified) {
+      throw CustomErrorHandler.UnAuthorized("user not verified");
+    }
+
+    const time = Date.now();
+
+    if (time > user.otpTime) {
+      throw CustomErrorHandler.BadRequest("OTP time expired");
+    }
+
+    if (otp !== user.otp) {
+      throw CustomErrorHandler.BadRequest("wrong verification code");
+    }
+
+    const hash = await bcrypt.hash(new_password, 14);
+
+    await AuthSchema.findByIdAndUpdate(user._id, {
+      password: hash,
+      otp: null,
+      otpTime: null,
+    });
+
+    res.status(200).json({
+      message: "Password changed",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// logout
+
 const logout = async (req, res, next) => {
   try {
     res.clearCookie("access_token");
@@ -210,4 +250,5 @@ module.exports = {
   verify,
   logout,
   resendOTP,
+  forgotPassword,
 };

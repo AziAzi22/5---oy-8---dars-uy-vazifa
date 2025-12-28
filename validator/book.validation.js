@@ -3,6 +3,7 @@ const Joi = require("joi");
 exports.BookValidator = async function (data) {
   const schema = Joi.object({
     title: Joi.string()
+      .trim()
       .pattern(/^[a-zA-Z0-9 ]{3,80}$/)
       .required(),
     pages: Joi.number().min(3).integer().required(),

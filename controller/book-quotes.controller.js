@@ -14,26 +14,6 @@ async function getAllBookQuotes(req, res, next) {
   }
 }
 
-// get one book quote
-
-async function getOneBookQuote(req, res, next) {
-  try {
-    const { id } = req.params;
-
-    const foundedBookQuote = await BookQuotesSchema.findById(id)
-      .populate("book_id", "title")
-      .populate("admin_id", "username");
-
-    if (!foundedBookQuote) {
-      throw CustomErrorHandler.NotFound("book quote not found");
-    }
-
-    res.status(200).json(foundedBookQuote);
-  } catch (error) {
-    next(error);
-  }
-}
-
 // add book quote
 
 async function addBookQuote(req, res, next) {
@@ -120,9 +100,8 @@ async function deleteBookQuote(req, res, next) {
 }
 
 module.exports = {
-  addBookQuote,
   getAllBookQuotes,
-  getOneBookQuote,
+  addBookQuote,
   updateBookQuote,
   deleteBookQuote,
 };

@@ -73,18 +73,20 @@ const getOneBook = async (req, res, next) => {
       throw CustomErrorHandler.NotFound("Book not found");
     }
 
-    const quotes = await BookQuotesSchema.find({ book_id: id })
-      .select("text -_id")
-      .populate("admin_id", "username -_id");
+    const quotes = await BookQuotesSchema.find({ book_id: id });
+    //   .select("text -_id")
+    //   .populate("admin_id", "username -_id");
 
-    const bookQuotes = quotes.map((q) => ({
-      text: q.text,
-      admin: q.admin_id.username,
-    }));
+    // const bookQuotes = quotes.map((q) => ({
+    //   text: q.text,
+    //   admin: q.admin_id.username,
+    // }));
 
     res.status(200).json({
-      ...book.toObject(),
-      quotes: bookQuotes,
+      // ...book.toObject(),
+      // quotes: bookQuotes, 
+      book,
+      quotes,
     });
   } catch (error) {
     next(error);

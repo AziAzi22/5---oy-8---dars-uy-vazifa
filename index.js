@@ -27,7 +27,7 @@ app.use(bookRouter);
 app.use(uploadRouter);
 app.use(authRouter);
 app.use(adminRouter);
-app.use(bookQuotesRouter)
+app.use(bookQuotesRouter);
 
 // error handler
 
